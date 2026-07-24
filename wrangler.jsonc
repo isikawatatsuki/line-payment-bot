@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "line-payment-bot",
+  "main": "src/cloudflare.ts",
+  "compatibility_date": "2026-07-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "APP_TIMEZONE": "Asia/Tokyo",
+    "CONVERSATION_TTL_MINUTES": "30"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "line-payment-bot",
+      "database_id": "2c3b8909-e156-4192-9a33-723bcad93d5d",
+      "migrations_dir": "migrations-d1"
+    }
+  ],
+  "triggers": {
+    "crons": ["5 15 * * *"]
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}

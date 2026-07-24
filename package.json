@@ -1,0 +1,37 @@
+{
+  "name": "line-payment-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "tsx src/local.ts",
+    "migrate": "tsx src/database/migrate.ts",
+    "cf:dev": "wrangler dev",
+    "cf:migrate:local": "wrangler d1 migrations apply line-payment-bot --local",
+    "cf:migrate:remote": "wrangler d1 migrations apply line-payment-bot --remote",
+    "cf:deploy": "wrangler deploy",
+    "check": "npm run build && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.11",
+    "dotenv": "^16.4.7",
+    "hono": "^4.7.2",
+    "kysely": "^0.28.2",
+    "mysql2": "^3.12.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.147",
+    "@cloudflare/workers-types": "^5.20260724.1",
+    "@types/node": "^22.13.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5",
+    "wrangler": "^4.114.0"
+  }
+}
