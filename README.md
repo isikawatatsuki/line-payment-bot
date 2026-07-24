@@ -181,7 +181,7 @@ npx wrangler secret put DASHBOARD_PASSWORD
 npx wrangler secret put DASHBOARD_SESSION_SECRET
 ```
 
-`DASHBOARD_SESSION_SECRET` には十分に長いランダム文字列を設定します。認証CookieはHttpOnly・Secure・SameSite=Laxで、7日後に失効します。
+`DASHBOARD_PASSWORD` は16文字以上、`DASHBOARD_SESSION_SECRET` は32文字以上のランダム文字列を設定します。未設定または短すぎる場合、ダッシュボードはFail Closedで起動を拒否します。認証CookieはHttpOnly・Secure・SameSite=Laxで、7日後に失効します。
 
 ## AWSへデプロイ（代替構成）
 

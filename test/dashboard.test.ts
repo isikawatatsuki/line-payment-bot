@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import type { D1Database } from "@cloudflare/workers-types";
-import { registerDashboardRoutes } from "../src/dashboard.js";
+import { registerDashboardRoutes, validateDashboardConfiguration } from "../src/dashboard.js";
 
 describe("dashboard group access", () => {
   const secret = "test-session-secret-that-is-long-enough";
@@ -9,7 +9,7 @@ describe("dashboard group access", () => {
 
   it("starts LINE Login with state, nonce and the configured callback", async () => {
     const app = new Hono();
-    registerDashboardRoutes(app, {} as D1Database, "admin", secret, "login-channel", "login-secret");
+    registerDashboardRoutes(app, {} as D1Database, "test-admin-password", secret, "login-channel", "login-secret");
     const response = await app.request("https://payment.example/dashboard/line/start?group=1");
     const location = new URL(response.headers.get("location")!);
     expect(response.status).toBe(302);
@@ -20,5 +20,15 @@ describe("dashboard group access", () => {
     expect(location.searchParams.get("state")).toBeTruthy();
     expect(location.searchParams.get("nonce")).toBeTruthy();
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
+  });
+
+  it("fails closed when dashboard secrets are missing or too short", () => {
+    expect(() => validateDashboardConfiguration(undefined, secret)).toThrow("DASHBOARD_PASSWORD");
+    expect(() => validateDashboardConfiguration("short", secret)).toThrow("DASHBOARD_PASSWORD");
+    expect(() => validateDashboardConfiguration("test-admin-password", "short")).toThrow("DASHBOARD_SESSION_SECRET");
+  });
+
+  it("rejects incomplete LINE Login configuration", () => {
+    expect(() => validateDashboardConfiguration("test-admin-password", secret, "login-channel", "")).toThrow("configured together");
   });
 });
