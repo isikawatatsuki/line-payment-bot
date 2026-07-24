@@ -13,6 +13,55 @@ LINEグループ内の月次・単発支払いを登録し、支払日に支払�
 
 HTTP/Lambda層、アプリケーションサービス、外部I/Oポート、Kysely実装を分離しています。LINE APIは `LineClient`、永続化は `Store` インターフェース越しに利用するためテストでは実通信しません。
 
+## インフラ構成
+
+```mermaid
+flowchart LR
+  User["LINEグループ利用者"]
+  Browser["Webブラウザ"]
+
+  subgraph LINE["LINE Platform"]
+    Messaging["Messaging API"]
+    Login["LINE Login / OAuth 2.0"]
+  end
+
+  subgraph Cloudflare["Cloudflare"]
+    Cron["Cron Trigger<br/>毎日 JST 06:00"]
+
+    subgraph Worker["Cloudflare Worker / Hono"]
+      Webhook["Webhook API<br/>POST /webhook"]
+      Bot["PaymentBot<br/>登録・確認・完了"]
+      Scheduler["PaymentScheduler<br/>依頼・当日・期限超過通知"]
+      Dashboard["Web Dashboard<br/>/dashboard"]
+      LineClient["LINE API Client"]
+    end
+
+    D1[("Cloudflare D1<br/>支払い・会話・通知履歴")]
+    Secrets["Workers Secrets<br/>LINE認証情報・セッション鍵"]
+  end
+
+  User -->|"メッセージ・メンション"| Messaging
+  Messaging -->|"署名付きWebhook"| Webhook
+  Webhook --> Bot
+  Bot <-->|"Store"| D1
+  Bot --> LineClient
+  LineClient -->|"Reply / Push"| Messaging
+  Messaging -->|"BOTメッセージ"| User
+
+  Browser -->|"HTTPS"| Dashboard
+  Dashboard <-->|"ログイン認証"| Login
+  Dashboard <-->|"ユーザー別集計"| D1
+
+  Cron --> Scheduler
+  Scheduler <-->|"対象抽出・通知日時記録"| D1
+  Scheduler --> LineClient
+  Secrets -.-> Webhook
+  Secrets -.-> Dashboard
+  Secrets -.-> LineClient
+```
+
+本番はCloudflare WorkersとD1で完結します。Cron TriggerはUTC 21:00に実行され、日本時間では毎朝06:00です。ローカル開発時のみ、D1の代わりにKysely経由でMariaDBを利用できます。
+
 ## セットアップ
 
 ```bash
