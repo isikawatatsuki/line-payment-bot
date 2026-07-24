@@ -7,11 +7,30 @@ type DashboardRow = Record<string, unknown>;
 const COOKIE = "payment_dashboard_session";
 const OAUTH_COOKIE = "payment_dashboard_oauth";
 type SessionScope = { kind: "admin" } | { kind: "user"; lineUserId: string };
+type LoginAttempt = { failureCount: number; windowStartedAt: string; blockedUntil: string | null };
+
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_BLOCK_MS = 30 * 60 * 1000;
+const LOGIN_MAX_FAILURES = 5;
 
 export function validateDashboardConfiguration(password: string | undefined, sessionSecret: string | undefined, lineLoginChannelId = "", lineLoginChannelSecret = ""): asserts password is string {
   if (!password || password.length < 16) throw new Error("DASHBOARD_PASSWORD must be at least 16 characters");
   if (!sessionSecret || sessionSecret.length < 32) throw new Error("DASHBOARD_SESSION_SECRET must be at least 32 characters");
   if (Boolean(lineLoginChannelId) !== Boolean(lineLoginChannelSecret)) throw new Error("LINE Login channel ID and secret must be configured together");
+}
+
+export function isLoginBlocked(attempt: LoginAttempt | null, now: Date): boolean {
+  return Boolean(attempt?.blockedUntil && Date.parse(attempt.blockedUntil) > now.getTime());
+}
+
+export function nextLoginFailure(attempt: LoginAttempt | null, now: Date): LoginAttempt {
+  const windowExpired = !attempt || now.getTime() - Date.parse(attempt.windowStartedAt) >= LOGIN_WINDOW_MS || (attempt.blockedUntil !== null && Date.parse(attempt.blockedUntil) <= now.getTime());
+  const failureCount = windowExpired ? 1 : attempt.failureCount + 1;
+  return {
+    failureCount,
+    windowStartedAt: windowExpired ? now.toISOString() : attempt.windowStartedAt,
+    blockedUntil: failureCount >= LOGIN_MAX_FAILURES ? new Date(now.getTime() + LOGIN_BLOCK_MS).toISOString() : null
+  };
 }
 
 function escapeHtml(value: unknown): string {
@@ -25,6 +44,22 @@ function toBase64Url(bytes: ArrayBuffer): string {
 async function sign(value: string, secret: string): Promise<string> {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return toBase64Url(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value)));
+}
+
+async function loginAttemptKey(address: string, secret: string): Promise<string> {
+  return sign(`dashboard-login:${address}`, secret);
+}
+
+async function findLoginAttempt(db: D1Database, key: string): Promise<LoginAttempt | null> {
+  const row = await db.prepare("SELECT failure_count, window_started_at, blocked_until FROM dashboard_login_attempts WHERE attempt_key = ?").bind(key).first<{ failure_count: number; window_started_at: string; blocked_until: string | null }>();
+  return row ? { failureCount: Number(row.failure_count), windowStartedAt: String(row.window_started_at), blockedUntil: row.blocked_until ? String(row.blocked_until) : null } : null;
+}
+
+async function saveLoginAttempt(db: D1Database, key: string, attempt: LoginAttempt, now: Date): Promise<void> {
+  await db.prepare(`INSERT INTO dashboard_login_attempts (attempt_key, failure_count, window_started_at, blocked_until, updated_at)
+    VALUES (?, ?, ?, ?, ?) ON CONFLICT(attempt_key) DO UPDATE SET failure_count = excluded.failure_count,
+    window_started_at = excluded.window_started_at, blocked_until = excluded.blocked_until, updated_at = excluded.updated_at`)
+    .bind(key, attempt.failureCount, attempt.windowStartedAt, attempt.blockedUntil, now.toISOString()).run();
 }
 
 function safeEqual(left: string, right: string): boolean {
@@ -111,6 +146,16 @@ function loginPage(error = false, groupId = "", lineLoginEnabled = false): strin
 export function registerDashboardRoutes(app: Hono, db: D1Database, password: string, sessionSecret: string, lineLoginChannelId = "", lineLoginChannelSecret = ""): void {
   validateDashboardConfiguration(password, sessionSecret, lineLoginChannelId, lineLoginChannelSecret);
   const lineLoginEnabled = Boolean(lineLoginChannelId && lineLoginChannelSecret);
+  app.use("*", async (c, next) => {
+    await next();
+    c.header("Cache-Control", "no-store");
+    c.header("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+    c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    c.header("Referrer-Policy", "no-referrer");
+    c.header("Strict-Transport-Security", "max-age=31536000");
+    c.header("X-Content-Type-Options", "nosniff");
+    c.header("X-Frame-Options", "DENY");
+  });
   app.get("/", (c) => c.redirect("/dashboard"));
   app.get("/dashboard/login", async (c) => {
     const session = await validSession(getCookie(c, COOKIE), sessionSecret);
@@ -118,10 +163,27 @@ export function registerDashboardRoutes(app: Hono, db: D1Database, password: str
     return c.html(loginPage(c.req.query("error") === "1", c.req.query("group") ?? "", lineLoginEnabled));
   });
   app.post("/dashboard/login", async (c) => {
+    const address = c.req.header("cf-connecting-ip") ?? c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const attemptKey = await loginAttemptKey(address, sessionSecret);
+    const currentAttempt = await findLoginAttempt(db, attemptKey);
+    if (isLoginBlocked(currentAttempt, new Date())) {
+      c.header("Retry-After", String(LOGIN_BLOCK_MS / 1000));
+      return c.html(loginPage(true, "", lineLoginEnabled), 429);
+    }
     const form = await c.req.formData();
     const enteredPassword = String(form.get("password") ?? "");
     const scope: SessionScope | null = safeEqual(enteredPassword, password) ? { kind: "admin" } : null;
-    if (!scope) return c.html(loginPage(true, "", lineLoginEnabled), 401);
+    if (!scope) {
+      const now = new Date();
+      const nextAttempt = nextLoginFailure(currentAttempt, now);
+      await saveLoginAttempt(db, attemptKey, nextAttempt, now);
+      if (nextAttempt.blockedUntil) {
+        c.header("Retry-After", String(LOGIN_BLOCK_MS / 1000));
+        return c.html(loginPage(true, "", lineLoginEnabled), 429);
+      }
+      return c.html(loginPage(true, "", lineLoginEnabled), 401);
+    }
+    await db.prepare("DELETE FROM dashboard_login_attempts WHERE attempt_key = ?").bind(attemptKey).run();
     setCookie(c, COOKIE, await sessionToken(sessionSecret, scope), { httpOnly: true, secure: true, sameSite: "Lax", path: "/dashboard", maxAge: 604800 });
     return c.redirect("/dashboard", 303);
   });
