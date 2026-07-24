@@ -19,7 +19,8 @@ const record = (row: PaymentRecordRow): PaymentRecord => ({
   id: String(row.id), paymentItemId: String(row.payment_item_id), groupId: String(row.group_id),
   payerMemberId: String(row.payer_member_id), targetMonth: String(row.target_month),
   itemNameSnapshot: row.item_name_snapshot, amountSnapshot: Number(row.amount_snapshot), paymentMethodSnapshot: row.payment_method_snapshot,
-  dueDate: String(row.due_date), status: row.status, notifiedAt: row.notified_at ? new Date(row.notified_at) : null,
+  dueDate: String(row.due_date), status: row.status, requestNotifiedAt: row.request_notified_at ? new Date(row.request_notified_at) : null,
+  notifiedAt: row.notified_at ? new Date(row.notified_at) : null, overdueNotifiedAt: row.overdue_notified_at ? new Date(row.overdue_notified_at) : null,
   paidAt: row.paid_at ? new Date(row.paid_at) : null,
   completedByMemberId: row.completed_by_member_id ? String(row.completed_by_member_id) : null
 });
@@ -92,7 +93,7 @@ export class KyselyStore implements Store {
     for (const row of rows) {
       const due = row.payment_type === "monthly" ? monthlyDueDate(targetMonth, row.payment_day!) : String(row.specific_payment_date);
       if (due !== date) continue;
-      await this.db.insertInto("payment_records").values({ payment_item_id: String(row.id), group_id: String(row.group_id), payer_member_id: String(row.payer_member_id), target_month: targetMonth, item_name_snapshot: row.name, amount_snapshot: Number(row.amount), payment_method_snapshot: row.payment_method, due_date: due, status: "pending", notified_at: null, paid_at: null, completed_by_member_id: null }).ignore().execute();
+      await this.db.insertInto("payment_records").values({ payment_item_id: String(row.id), group_id: String(row.group_id), payer_member_id: String(row.payer_member_id), target_month: targetMonth, item_name_snapshot: row.name, amount_snapshot: Number(row.amount), payment_method_snapshot: row.payment_method, due_date: due, status: "pending", request_notified_at: null, notified_at: null, overdue_notified_at: null, paid_at: null, completed_by_member_id: null }).ignore().execute();
     }
     return (await this.db.selectFrom("payment_records").selectAll().where("due_date", "=", date).execute()).map(record);
   }
@@ -101,14 +102,18 @@ export class KyselyStore implements Store {
     if (payerMemberId) query = query.where("payer_member_id", "=", payerMemberId);
     return (await query.execute()).map(record);
   }
+  async listPendingRecordsDueBefore(date: string) {
+    return (await this.db.selectFrom("payment_records").selectAll().where("status", "=", "pending").where("due_date", "<", date).orderBy("due_date").orderBy("id").execute()).map(record);
+  }
   async markPaid(ids: string[], memberId: string, now: Date) {
     if (!ids.length) return 0;
     const result = await this.db.updateTable("payment_records").set({ status: "paid", paid_at: now, completed_by_member_id: memberId }).where("id", "in", ids).where("payer_member_id", "=", memberId).where("status", "=", "pending").executeTakeFirst();
     return Number(result.numUpdatedRows);
   }
-  async markNotified(ids: string[], now: Date) {
+  async markNotification(ids: string[], kind: "request" | "due" | "overdue", now: Date) {
     if (!ids.length) return 0;
-    const result = await this.db.updateTable("payment_records").set({ notified_at: now }).where("id", "in", ids).where("notified_at", "is", null).executeTakeFirst();
+    const values = kind === "request" ? { request_notified_at: now } : kind === "due" ? { notified_at: now } : { overdue_notified_at: now };
+    const result = await this.db.updateTable("payment_records").set(values).where("id", "in", ids).executeTakeFirst();
     return Number(result.numUpdatedRows);
   }
 }

@@ -36,11 +36,12 @@ export class MemoryStore implements Store {
     for (const value of this.items.filter((i) => i.isActive)) {
       const due = value.paymentType === "monthly" ? monthlyDueDate(target, value.paymentDay!) : value.specificPaymentDate;
       if (due !== date || this.records.some((r) => r.paymentItemId === value.id && r.targetMonth === target)) continue;
-      this.records.push({ id: this.id(), paymentItemId: value.id, groupId: value.groupId, payerMemberId: value.payerMemberId, targetMonth: target, itemNameSnapshot: value.name, amountSnapshot: value.amount, paymentMethodSnapshot: value.paymentMethod, dueDate: due, status: "pending", notifiedAt: null, paidAt: null, completedByMemberId: null });
+      this.records.push({ id: this.id(), paymentItemId: value.id, groupId: value.groupId, payerMemberId: value.payerMemberId, targetMonth: target, itemNameSnapshot: value.name, amountSnapshot: value.amount, paymentMethodSnapshot: value.paymentMethod, dueDate: due, status: "pending", requestNotifiedAt: null, notifiedAt: null, overdueNotifiedAt: null, paidAt: null, completedByMemberId: null });
     }
     return this.records.filter((r) => r.dueDate === date);
   }
   async listRecords(g: string, month: string, payer?: string) { return this.records.filter((r) => r.groupId === g && r.targetMonth === month && (!payer || r.payerMemberId === payer)); }
+  async listPendingRecordsDueBefore(date: string) { return this.records.filter((r) => r.status === "pending" && r.dueDate < date); }
   async markPaid(ids: string[], member: string, now: Date) { let n = 0; for (const r of this.records) if (ids.includes(r.id) && r.payerMemberId === member && r.status === "pending") { r.status = "paid"; r.paidAt = now; r.completedByMemberId = member; n++; } return n; }
-  async markNotified(ids: string[], now: Date) { let n = 0; for (const r of this.records) if (ids.includes(r.id) && !r.notifiedAt) { r.notifiedAt = now; n++; } return n; }
+  async markNotification(ids: string[], kind: "request" | "due" | "overdue", now: Date) { let n = 0; for (const r of this.records) if (ids.includes(r.id)) { if (kind === "request") r.requestNotifiedAt = now; else if (kind === "due") r.notifiedAt = now; else r.overdueNotifiedAt = now; n++; } return n; }
 }
