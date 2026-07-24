@@ -8,6 +8,15 @@
     "APP_TIMEZONE": "Asia/Tokyo",
     "CONVERSATION_TTL_MINUTES": "30"
   },
+  "secrets": {
+    "required": [
+      "LINE_CHANNEL_ACCESS_TOKEN",
+      "LINE_CHANNEL_SECRET",
+      "LINE_BOT_USER_ID",
+      "DASHBOARD_PASSWORD",
+      "DASHBOARD_SESSION_SECRET"
+    ]
+  },
   "d1_databases": [
     {
       "binding": "DB",

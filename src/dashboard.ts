@@ -8,6 +8,12 @@ const COOKIE = "payment_dashboard_session";
 const OAUTH_COOKIE = "payment_dashboard_oauth";
 type SessionScope = { kind: "admin" } | { kind: "user"; lineUserId: string };
 
+export function validateDashboardConfiguration(password: string | undefined, sessionSecret: string | undefined, lineLoginChannelId = "", lineLoginChannelSecret = ""): asserts password is string {
+  if (!password || password.length < 16) throw new Error("DASHBOARD_PASSWORD must be at least 16 characters");
+  if (!sessionSecret || sessionSecret.length < 32) throw new Error("DASHBOARD_SESSION_SECRET must be at least 32 characters");
+  if (Boolean(lineLoginChannelId) !== Boolean(lineLoginChannelSecret)) throw new Error("LINE Login channel ID and secret must be configured together");
+}
+
 function escapeHtml(value: unknown): string {
   return String(value ?? "").replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]!);
 }
@@ -103,6 +109,7 @@ function loginPage(error = false, groupId = "", lineLoginEnabled = false): strin
 }
 
 export function registerDashboardRoutes(app: Hono, db: D1Database, password: string, sessionSecret: string, lineLoginChannelId = "", lineLoginChannelSecret = ""): void {
+  validateDashboardConfiguration(password, sessionSecret, lineLoginChannelId, lineLoginChannelSecret);
   const lineLoginEnabled = Boolean(lineLoginChannelId && lineLoginChannelSecret);
   app.get("/", (c) => c.redirect("/dashboard"));
   app.get("/dashboard/login", async (c) => {
