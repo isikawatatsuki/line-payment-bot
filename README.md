@@ -202,6 +202,7 @@ LambdaからMariaDBへ到達できるVPC・Security Group・接続情報を設�
 - `payment_records`: 月次実績と名称・金額スナップショット
 - `conversation_states`: グループ・ユーザー単位の会話状態
 - `processed_line_events`: Webhookイベントの処理済み記録
+- `dashboard_login_attempts`: 管理者ログイン失敗回数と一時ブロック（IPアドレスはHMACで匿名化）
 
 DB日時はUTC、ユーザー表示はAsia/Tokyoです。金額は `BIGINT UNSIGNED`、アプリ内では安全な整数として扱います。
 
@@ -222,3 +223,15 @@ DB日時はUTC、ユーザー表示はAsia/Tokyoです。金額は `BIGINT UNSIG
 - `Invalid signature` はチャネルシークレットとリクエスト本文の改変有無を確認してください。
 - 通知されない場合は支払日、項目の有効期間、LambdaのJST換算、DB接続、`notified_at` を確認してください。
 - 本番ではSecrets Manager、RDS Proxy、構造化ログ、アラームを併用してください。
+
+## セキュリティ
+
+- LINE Webhookは生のリクエスト本文をHMAC-SHA256で検証します。
+- ダッシュボードCookieはHttpOnly・Secure・SameSite=Laxで、HMAC署名と有効期限を検証します。
+- 管理者ログインはIPアドレスのHMAC値単位で15分間に5回までとし、上限到達後は30分間ブロックします。
+- ダッシュボードにはCSP、クリックジャッキング防止、MIMEスニッフィング防止などのHTTPヘッダーを付与します。
+- 脆弱性の報告方法は [SECURITY.md](SECURITY.md) を参照してください。
+
+## ライセンス
+
+[MIT License](LICENSE)

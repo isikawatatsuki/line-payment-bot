@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import type { D1Database } from "@cloudflare/workers-types";
-import { registerDashboardRoutes, validateDashboardConfiguration } from "../src/dashboard.js";
+import { isLoginBlocked, nextLoginFailure, registerDashboardRoutes, validateDashboardConfiguration } from "../src/dashboard.js";
 
 describe("dashboard group access", () => {
   const secret = "test-session-secret-that-is-long-enough";
@@ -20,6 +20,9 @@ describe("dashboard group access", () => {
     expect(location.searchParams.get("state")).toBeTruthy();
     expect(location.searchParams.get("nonce")).toBeTruthy();
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
+    expect(response.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+    expect(response.headers.get("x-frame-options")).toBe("DENY");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   });
 
   it("fails closed when dashboard secrets are missing or too short", () => {
@@ -30,5 +33,14 @@ describe("dashboard group access", () => {
 
   it("rejects incomplete LINE Login configuration", () => {
     expect(() => validateDashboardConfiguration("test-admin-password", secret, "login-channel", "")).toThrow("configured together");
+  });
+
+  it("blocks an address after five failed admin logins", () => {
+    const now = new Date("2026-07-24T06:00:00.000Z");
+    let attempt = nextLoginFailure(null, now);
+    for (let index = 0; index < 4; index++) attempt = nextLoginFailure(attempt, new Date(now.getTime() + index + 1));
+    expect(attempt.failureCount).toBe(5);
+    expect(isLoginBlocked(attempt, now)).toBe(true);
+    expect(isLoginBlocked(attempt, new Date(now.getTime() + 31 * 60 * 1000))).toBe(false);
   });
 });
