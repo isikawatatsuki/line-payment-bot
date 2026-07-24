@@ -36,7 +36,7 @@ export class MemoryStore implements Store {
     for (const value of this.items.filter((i) => i.isActive)) {
       const due = value.paymentType === "monthly" ? monthlyDueDate(target, value.paymentDay!) : value.specificPaymentDate;
       if (due !== date || this.records.some((r) => r.paymentItemId === value.id && r.targetMonth === target)) continue;
-      this.records.push({ id: this.id(), paymentItemId: value.id, groupId: value.groupId, payerMemberId: value.payerMemberId, targetMonth: target, itemNameSnapshot: value.name, amountSnapshot: value.amount, dueDate: due, status: "pending", notifiedAt: null, paidAt: null, completedByMemberId: null });
+      this.records.push({ id: this.id(), paymentItemId: value.id, groupId: value.groupId, payerMemberId: value.payerMemberId, targetMonth: target, itemNameSnapshot: value.name, amountSnapshot: value.amount, paymentMethodSnapshot: value.paymentMethod, dueDate: due, status: "pending", notifiedAt: null, paidAt: null, completedByMemberId: null });
     }
     return this.records.filter((r) => r.dueDate === date);
   }

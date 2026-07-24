@@ -14,7 +14,7 @@ function toItem(row: Row): PaymentItem {
     id: String(row.id), groupId: String(row.group_id), name: String(row.name), startMonth: String(row.start_month),
     endMonth: row.end_month ? String(row.end_month) : null, paymentType: row.payment_type as PaymentItem["paymentType"],
     paymentDay: row.payment_day === null ? null : Number(row.payment_day), specificPaymentDate: row.specific_payment_date ? String(row.specific_payment_date) : null,
-    payerMemberId: String(row.payer_member_id), amount: Number(row.amount), note: row.note ? String(row.note) : null,
+    payerMemberId: String(row.payer_member_id), amount: Number(row.amount), paymentMethod: row.payment_method ? String(row.payment_method) : null, note: row.note ? String(row.note) : null,
     isActive: Boolean(row.is_active), createdByMemberId: String(row.created_by_member_id)
   };
 }
@@ -22,7 +22,7 @@ function toItem(row: Row): PaymentItem {
 function toRecord(row: Row): PaymentRecord {
   return {
     id: String(row.id), paymentItemId: String(row.payment_item_id), groupId: String(row.group_id), payerMemberId: String(row.payer_member_id),
-    targetMonth: String(row.target_month), itemNameSnapshot: String(row.item_name_snapshot), amountSnapshot: Number(row.amount_snapshot),
+    targetMonth: String(row.target_month), itemNameSnapshot: String(row.item_name_snapshot), amountSnapshot: Number(row.amount_snapshot), paymentMethodSnapshot: row.payment_method_snapshot ? String(row.payment_method_snapshot) : null,
     dueDate: String(row.due_date), status: row.status as PaymentRecord["status"], notifiedAt: row.notified_at ? new Date(String(row.notified_at)) : null,
     paidAt: row.paid_at ? new Date(String(row.paid_at)) : null, completedByMemberId: row.completed_by_member_id ? String(row.completed_by_member_id) : null
   };
@@ -88,8 +88,8 @@ export class D1Store implements Store {
 
   async createItem(value: NewPaymentItem) {
     const result = await this.db.prepare(`INSERT INTO payment_items
-      (group_id, name, start_month, end_month, payment_type, payment_day, specific_payment_date, payer_member_id, amount, note, is_active, created_by_member_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`).bind(value.groupId, value.name, value.startMonth, value.endMonth, value.paymentType, value.paymentDay, value.specificPaymentDate, value.payerMemberId, value.amount, value.note, value.createdByMemberId).run();
+      (group_id, name, start_month, end_month, payment_type, payment_day, specific_payment_date, payer_member_id, amount, payment_method, note, is_active, created_by_member_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`).bind(value.groupId, value.name, value.startMonth, value.endMonth, value.paymentType, value.paymentDay, value.specificPaymentDate, value.payerMemberId, value.amount, value.paymentMethod, value.note, value.createdByMemberId).run();
     const created = await this.findItem(String(result.meta.last_row_id));
     if (!created) throw new Error("Failed to create payment item");
     return created;
@@ -132,8 +132,8 @@ export class D1Store implements Store {
       const dueDate = value.paymentType === "monthly" ? monthlyDueDate(targetMonth, value.paymentDay!) : value.specificPaymentDate;
       if (dueDate !== date) continue;
       statements.push(this.db.prepare(`INSERT OR IGNORE INTO payment_records
-        (payment_item_id, group_id, payer_member_id, target_month, item_name_snapshot, amount_snapshot, due_date, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`).bind(value.id, value.groupId, value.payerMemberId, targetMonth, value.name, value.amount, dueDate));
+        (payment_item_id, group_id, payer_member_id, target_month, item_name_snapshot, amount_snapshot, payment_method_snapshot, due_date, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`).bind(value.id, value.groupId, value.payerMemberId, targetMonth, value.name, value.amount, value.paymentMethod, dueDate));
     }
     if (statements.length) await this.db.batch(statements);
     const rows = await this.db.prepare("SELECT * FROM payment_records WHERE due_date = ?").bind(date).all<Row>();

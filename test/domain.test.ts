@@ -17,9 +17,9 @@ describe("domain parsers", () => {
     expect(normalizeAction("支払い項目を削除")).toBe("delete");
   });
   it("parses a payment form and mention identity", () => {
-    const result = parsePaymentInput("項目名: 家賃\n開始月: 2026年7月\n終了月: 未定\n支払日: 毎月27日\n支払い者: @石川\n金額: 120000円\n備考: 共有家賃", [{ lineUserId: "U1", displayName: "石川" }]);
+    const result = parsePaymentInput("項目名: 家賃\n開始月: 2026年7月\n終了月: 未定\n支払日: 毎月27日\n支払い者: @石川\n金額: 120000円\n希望支払い方法: 銀行振込\n備考: 共有家賃", [{ lineUserId: "U1", displayName: "石川" }]);
     expect(result.errors).toEqual([]);
-    expect(result.value).toMatchObject({ name: "家賃", paymentDay: 27, amount: 120000, payerLineUserId: "U1" });
+    expect(result.value).toMatchObject({ name: "家賃", paymentDay: 27, amount: 120000, payerLineUserId: "U1", paymentMethod: "銀行振込" });
   });
   it.each(["自分", "本人", "投稿者", "私"])("treats %s as the posting user", (payer) => {
     const result = parsePaymentInput(`項目名: 家賃\n開始月: 2026年7月\n終了月: 未定\n支払日: 毎月27日\n支払い者: ${payer}\n金額: 120000円`, [], { lineUserId: "SELF", displayName: "石川" });

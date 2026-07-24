@@ -8,7 +8,7 @@ const item = (row: PaymentItemRow): PaymentItem => ({
   id: String(row.id), groupId: String(row.group_id), name: row.name, startMonth: String(row.start_month),
   endMonth: row.end_month ? String(row.end_month) : null, paymentType: row.payment_type,
   paymentDay: row.payment_day, specificPaymentDate: row.specific_payment_date ? String(row.specific_payment_date) : null,
-  payerMemberId: String(row.payer_member_id), amount: Number(row.amount), note: row.note,
+  payerMemberId: String(row.payer_member_id), amount: Number(row.amount), paymentMethod: row.payment_method, note: row.note,
   isActive: Boolean(row.is_active), createdByMemberId: String(row.created_by_member_id)
 });
 const member = (row: LineMemberRow): Member => ({
@@ -18,7 +18,7 @@ const member = (row: LineMemberRow): Member => ({
 const record = (row: PaymentRecordRow): PaymentRecord => ({
   id: String(row.id), paymentItemId: String(row.payment_item_id), groupId: String(row.group_id),
   payerMemberId: String(row.payer_member_id), targetMonth: String(row.target_month),
-  itemNameSnapshot: row.item_name_snapshot, amountSnapshot: Number(row.amount_snapshot),
+  itemNameSnapshot: row.item_name_snapshot, amountSnapshot: Number(row.amount_snapshot), paymentMethodSnapshot: row.payment_method_snapshot,
   dueDate: String(row.due_date), status: row.status, notifiedAt: row.notified_at ? new Date(row.notified_at) : null,
   paidAt: row.paid_at ? new Date(row.paid_at) : null,
   completedByMemberId: row.completed_by_member_id ? String(row.completed_by_member_id) : null
@@ -65,7 +65,7 @@ export class KyselyStore implements Store {
     const result = await this.db.insertInto("payment_items").values({
       group_id: value.groupId, name: value.name, start_month: value.startMonth, end_month: value.endMonth,
       payment_type: value.paymentType, payment_day: value.paymentDay, specific_payment_date: value.specificPaymentDate,
-      payer_member_id: value.payerMemberId, amount: value.amount, note: value.note, is_active: true,
+      payer_member_id: value.payerMemberId, amount: value.amount, payment_method: value.paymentMethod, note: value.note, is_active: true,
       created_by_member_id: value.createdByMemberId
     }).executeTakeFirstOrThrow();
     return (await this.findItem(String(result.insertId)))!;
@@ -92,7 +92,7 @@ export class KyselyStore implements Store {
     for (const row of rows) {
       const due = row.payment_type === "monthly" ? monthlyDueDate(targetMonth, row.payment_day!) : String(row.specific_payment_date);
       if (due !== date) continue;
-      await this.db.insertInto("payment_records").values({ payment_item_id: String(row.id), group_id: String(row.group_id), payer_member_id: String(row.payer_member_id), target_month: targetMonth, item_name_snapshot: row.name, amount_snapshot: Number(row.amount), due_date: due, status: "pending", notified_at: null, paid_at: null, completed_by_member_id: null }).ignore().execute();
+      await this.db.insertInto("payment_records").values({ payment_item_id: String(row.id), group_id: String(row.group_id), payer_member_id: String(row.payer_member_id), target_month: targetMonth, item_name_snapshot: row.name, amount_snapshot: Number(row.amount), payment_method_snapshot: row.payment_method, due_date: due, status: "pending", notified_at: null, paid_at: null, completed_by_member_id: null }).ignore().execute();
     }
     return (await this.db.selectFrom("payment_records").selectAll().where("due_date", "=", date).execute()).map(record);
   }

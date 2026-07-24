@@ -13,6 +13,7 @@ export interface PaymentItem {
   specificPaymentDate: string | null;
   payerMemberId: string;
   amount: number;
+  paymentMethod: string | null;
   note: string | null;
   isActive: boolean;
   createdByMemberId: string;
@@ -26,6 +27,7 @@ export interface PaymentRecord {
   targetMonth: string;
   itemNameSnapshot: string;
   amountSnapshot: number;
+  paymentMethodSnapshot: string | null;
   dueDate: string;
   status: PaymentStatus;
   notifiedAt: Date | null;
@@ -43,6 +45,7 @@ export interface ParsedPaymentInput {
   payerLineUserId: string;
   payerDisplayName: string;
   amount: number;
+  paymentMethod: string | null;
   note: string | null;
 }
 

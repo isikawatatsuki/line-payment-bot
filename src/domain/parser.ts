@@ -64,6 +64,7 @@ export function parsePaymentInput(input: string, mentions: Mention[], self?: Men
   const monthly = rawDue.match(/毎月\s*(\d{1,2})\s*日/);
   const specific = rawDue.match(/(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日/);
   const amount = parseAmount(fields.get("金額") ?? "");
+  const paymentMethod = fields.get("希望支払い方法") || fields.get("支払い方法") || null;
   const payerText = fields.get("支払い者") ?? "";
   const isSelf = /^(?:@?自分|本人|投稿者|私|わたし)$/i.test(payerText.replace(/[\s　]+/g, ""));
   const payer = isSelf ? self : mentions.find((mention) => payerText.includes(mention.displayName))
@@ -76,6 +77,7 @@ export function parsePaymentInput(input: string, mentions: Mention[], self?: Men
   if (monthly && (Number(monthly[1]) < 1 || Number(monthly[1]) > 31)) errors.push("支払日");
   if (!amount) errors.push("金額");
   if (!payer) errors.push("支払い者");
+  if (paymentMethod && paymentMethod.length > 255) errors.push("希望支払い方法（255文字以内）");
   if (startMonth && endMonth && endMonth < startMonth) errors.push("終了月");
   if (errors.length || !startMonth || !amount || !payer) return { errors: [...new Set(errors)] };
 
@@ -91,6 +93,7 @@ export function parsePaymentInput(input: string, mentions: Mention[], self?: Men
       payerLineUserId: payer.lineUserId,
       payerDisplayName: payer.displayName,
       amount,
+      paymentMethod,
       note: fields.get("備考") || null
     },
     errors: []
