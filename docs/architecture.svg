@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">LINE支払いBOT インフラ構成図</title>
+  <desc id="desc">LINEグループ、LINE Platform、Cloudflare Workers、Cron Trigger、D1、ダッシュボード間の通信経路を示す構成図</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#27194a" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6f6680"/>
+    </marker>
+    <style>
+      .title{font:700 30px 'Meiryo','Yu Gothic','Noto Sans JP',sans-serif;fill:#211b2b}
+      .subtitle{font:400 15px 'Meiryo','Yu Gothic','Noto Sans JP',sans-serif;fill:#756d80}
+      .zone-title{font:700 16px 'Meiryo','Yu Gothic','Noto Sans JP',sans-serif;letter-spacing:.08em;fill:#4c4258}
+      .node-title{font:700 18px 'Meiryo','Yu Gothic','Noto Sans JP',sans-serif;fill:#26202f}
+      .node-copy{font:400 13px 'Meiryo','Yu Gothic','Noto Sans JP',sans-serif;fill:#756d80}
+      .brand{font:700 15px 'Meiryo','Yu Gothic','Noto Sans JP',sans-serif;fill:#fff}
+      .edge{fill:none;stroke:#6f6680;stroke-width:2.2;marker-end:url(#arrow)}
+      .edge-soft{fill:none;stroke:#9b92a8;stroke-width:1.8;stroke-dasharray:6 6;marker-end:url(#arrow)}
+      .edge-label{font:600 12px 'Meiryo','Yu Gothic','Noto Sans JP',sans-serif;fill:#655c72}
+    </style>
+  </defs>
+
+  <rect width="1440" height="900" fill="#ffffff"/>
+  <text class="title" x="48" y="57">LINE支払いBOT ─ Infrastructure</text>
+  <text class="subtitle" x="48" y="84">Webhook・定期通知・ユーザー別ダッシュボードをCloudflare上で運用</text>
+
+  <rect x="36" y="116" width="294" height="744" rx="26" fill="#f7f6f9" stroke="#e5e1e9"/>
+  <text class="zone-title" x="62" y="153">USER / LINE PLATFORM</text>
+
+  <rect x="356" y="116" width="1048" height="744" rx="26" fill="#fbf9ff" stroke="#dcd2f3" stroke-width="2"/>
+  <g transform="translate(382 136)">
+    <path d="M5 19c-2.7 0-5-2.1-5-4.7 0-2.3 1.8-4.3 4.2-4.6C5.1 5.9 8.6 3 12.9 3c4.7 0 8.6 3.4 9.2 7.8 2.1.4 3.7 2.1 3.7 4.2 0 2.3-2 4.1-4.5 4.1H5z" fill="#f48120"/>
+  </g>
+  <text class="zone-title" x="418" y="153" fill="#d96612">CLOUDFLARE</text>
+
+  <!-- LINE user -->
+  <g filter="url(#shadow)">
+    <rect x="72" y="184" width="222" height="104" rx="18" fill="#fff"/>
+    <circle cx="112" cy="229" r="24" fill="#eee8ff"/>
+    <circle cx="112" cy="220" r="8" fill="#7251c7"/>
+    <path d="M96 245c2-10 9-15 16-15s14 5 16 15" fill="#7251c7"/>
+    <text class="node-title" x="147" y="225">LINEグループ</text>
+    <text class="node-copy" x="147" y="248">利用者・支払い者</text>
+  </g>
+
+  <!-- LINE Messaging API -->
+  <g filter="url(#shadow)">
+    <rect x="72" y="346" width="222" height="116" rx="18" fill="#fff"/>
+    <rect x="91" y="371" width="50" height="50" rx="13" fill="#06c755"/>
+    <path d="M101 385h30v19c0 6-6 10-15 10l-7 6 2-7c-6-2-10-5-10-9z" fill="#fff"/>
+    <text x="116" y="401" text-anchor="middle" font-family="Segoe UI,sans-serif" font-size="9" font-weight="700" fill="#06c755">LINE</text>
+    <text class="node-title" x="156" y="390">Messaging API</text>
+    <text class="node-copy" x="156" y="414">Webhook / Reply / Push</text>
+    <rect x="91" y="432" width="82" height="20" rx="10" fill="#e8faef"/>
+    <text x="132" y="446" text-anchor="middle" font-family="Segoe UI,sans-serif" font-size="10" font-weight="700" fill="#07883e">LINE Platform</text>
+  </g>
+
+  <!-- Browser -->
+  <g filter="url(#shadow)">
+    <rect x="72" y="582" width="222" height="104" rx="18" fill="#fff"/>
+    <rect x="92" y="604" width="54" height="42" rx="5" fill="none" stroke="#5c6ecf" stroke-width="3"/>
+    <path d="M92 615h54M100 610h1M107 610h1" stroke="#5c6ecf" stroke-width="3" stroke-linecap="round"/>
+    <text class="node-title" x="160" y="623">Webブラウザ</text>
+    <text class="node-copy" x="160" y="646">支払いダッシュボード</text>
+  </g>
+
+  <!-- LINE Login -->
+  <g filter="url(#shadow)">
+    <rect x="72" y="734" width="222" height="92" rx="18" fill="#fff"/>
+    <rect x="92" y="754" width="46" height="46" rx="13" fill="#06c755"/>
+    <circle cx="112" cy="773" r="8" fill="none" stroke="#fff" stroke-width="4"/>
+    <path d="M119 779l9 9M126 786l-4 4" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+    <text class="node-title" x="154" y="773">LINE Login</text>
+    <text class="node-copy" x="154" y="796">OAuth 2.0</text>
+  </g>
+
+  <!-- Worker boundary -->
+  <rect x="400" y="184" width="626" height="490" rx="24" fill="#ffffff" stroke="#eadffb" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="400" y="184" width="626" height="56" rx="24" fill="#f48120"/>
+  <path d="M400 216h626v24H400z" fill="#f48120"/>
+  <g transform="translate(426 200)">
+    <path d="M2 18h25l-6-8-4 5-6-10z" fill="#fff" opacity=".95"/>
+  </g>
+  <text class="brand" x="464" y="217">CLOUDFLARE WORKER · HONO</text>
+  <rect x="874" y="199" width="124" height="25" rx="12" fill="#fff" fill-opacity=".2"/>
+  <text x="936" y="216" text-anchor="middle" font-family="Segoe UI,sans-serif" font-size="11" font-weight="700" fill="#fff">TypeScript</text>
+
+  <!-- Webhook -->
+  <g>
+    <rect x="438" y="274" width="230" height="112" rx="16" fill="#fff7ef" stroke="#f3c596"/>
+    <circle cx="475" cy="313" r="20" fill="#ffe2c7"/>
+    <path d="M464 313h22M475 302v22M467 305l-6 8 6 8M483 305l6 8-6 8" fill="none" stroke="#d96812" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="node-title" x="510" y="310">Webhook API</text>
+    <text class="node-copy" x="510" y="332">POST /webhook</text>
+    <text class="node-copy" x="456" y="365">署名検証・イベント冪等処理</text>
+  </g>
+
+  <!-- PaymentBot -->
+  <g>
+    <rect x="758" y="274" width="230" height="112" rx="16" fill="#f5f0ff" stroke="#d8c6ff"/>
+    <circle cx="795" cy="313" r="20" fill="#e5d9ff"/>
+    <rect x="784" y="304" width="22" height="18" rx="5" fill="none" stroke="#6d3ee8" stroke-width="2.5"/>
+    <circle cx="791" cy="313" r="2" fill="#6d3ee8"/><circle cx="799" cy="313" r="2" fill="#6d3ee8"/>
+    <path d="M795 304v-6M791 298h8" stroke="#6d3ee8" stroke-width="2.5" stroke-linecap="round"/>
+    <text class="node-title" x="830" y="310">PaymentBot</text>
+    <text class="node-copy" x="830" y="332">登録・確認・支払い完了</text>
+    <text class="node-copy" x="776" y="365">会話状態と支払い項目を管理</text>
+  </g>
+
+  <!-- Scheduler -->
+  <g>
+    <rect x="438" y="438" width="230" height="112" rx="16" fill="#f5f0ff" stroke="#d8c6ff"/>
+    <circle cx="475" cy="477" r="20" fill="#e5d9ff"/>
+    <circle cx="475" cy="477" r="11" fill="none" stroke="#6d3ee8" stroke-width="2.5"/>
+    <path d="M475 470v8l6 4" stroke="#6d3ee8" stroke-width="2.5" stroke-linecap="round"/>
+    <text class="node-title" x="510" y="474">Scheduler</text>
+    <text class="node-copy" x="510" y="496">毎朝 06:00 JST</text>
+    <text class="node-copy" x="456" y="529">依頼・当日・期限超過を通知</text>
+  </g>
+
+  <!-- LINE client -->
+  <g>
+    <rect x="758" y="438" width="230" height="112" rx="16" fill="#eefbf3" stroke="#bce8ce"/>
+    <circle cx="795" cy="477" r="20" fill="#d9f7e5"/>
+    <path d="M785 470h20v14h-11l-6 5 2-5h-5z" fill="none" stroke="#079544" stroke-width="2.5" stroke-linejoin="round"/>
+    <text class="node-title" x="830" y="474">LINE API Client</text>
+    <text class="node-copy" x="830" y="496">Reply / Push Message</text>
+    <text class="node-copy" x="776" y="529">支払い者ごとに通知を集約</text>
+  </g>
+
+  <!-- Dashboard -->
+  <g>
+    <rect x="542" y="586" width="304" height="64" rx="15" fill="#f3f5ff" stroke="#cad2f7"/>
+    <path d="M568 605h32v25h-32zM574 623v-8M582 623v-13M590 623v-5" fill="none" stroke="#5c6ecf" stroke-width="2.4"/>
+    <text class="node-title" x="615" y="613">Web Dashboard</text>
+    <text class="node-copy" x="615" y="634">ユーザー別の支払い集計・グラフ</text>
+  </g>
+
+  <!-- D1 -->
+  <g filter="url(#shadow)">
+    <rect x="1090" y="274" width="260" height="150" rx="20" fill="#fff"/>
+    <ellipse cx="1140" cy="316" rx="24" ry="10" fill="#dfe7ff" stroke="#5572d8" stroke-width="2.5"/>
+    <path d="M1116 316v35c0 6 11 10 24 10s24-4 24-10v-35M1116 333c0 6 11 10 24 10s24-4 24-10" fill="#eef2ff" stroke="#5572d8" stroke-width="2.5"/>
+    <text class="node-title" x="1182" y="320">Cloudflare D1</text>
+    <text class="node-copy" x="1182" y="343">SQLite Database</text>
+    <text class="node-copy" x="1116" y="390">支払い・会話・通知履歴</text>
+  </g>
+
+  <!-- Secrets -->
+  <g filter="url(#shadow)">
+    <rect x="1090" y="486" width="260" height="112" rx="20" fill="#fff"/>
+    <circle cx="1140" cy="530" r="21" fill="#eeeaf2"/>
+    <circle cx="1134" cy="526" r="7" fill="none" stroke="#756d80" stroke-width="3"/>
+    <path d="M1140 531l13 13M1148 539l5-5M1153 544l4-4" stroke="#756d80" stroke-width="3" stroke-linecap="round"/>
+    <text class="node-title" x="1182" y="526">Workers Secrets</text>
+    <text class="node-copy" x="1182" y="549">LINE認証・セッション鍵</text>
+    <text class="node-copy" x="1116" y="578">コード外で安全に保持</text>
+  </g>
+
+  <!-- Cron -->
+  <g filter="url(#shadow)">
+    <rect x="430" y="728" width="248" height="92" rx="18" fill="#fff"/>
+    <circle cx="470" cy="774" r="21" fill="#ffe8d5"/>
+    <circle cx="470" cy="774" r="11" fill="none" stroke="#d96812" stroke-width="2.5"/>
+    <path d="M470 767v8l6 3" stroke="#d96812" stroke-width="2.5" stroke-linecap="round"/>
+    <text class="node-title" x="506" y="770">Cron Trigger</text>
+    <text class="node-copy" x="506" y="793">UTC 21:00 / JST 06:00</text>
+  </g>
+
+  <!-- Connections -->
+  <path class="edge" d="M183 288V346"/>
+  <text class="edge-label" x="196" y="322">送信</text>
+
+  <path class="edge" d="M294 391 C350 391 375 330 438 330"/>
+  <rect x="325" y="340" width="91" height="23" rx="11" fill="#fff"/>
+  <text class="edge-label" x="370" y="356" text-anchor="middle">Webhook</text>
+
+  <path class="edge" d="M668 330H758"/>
+  <text class="edge-label" x="713" y="318" text-anchor="middle">event</text>
+
+  <path class="edge" d="M988 330H1090"/>
+  <text class="edge-label" x="1039" y="317" text-anchor="middle">Store</text>
+
+  <path class="edge" d="M668 494H758"/>
+  <text class="edge-label" x="713" y="482" text-anchor="middle">Push</text>
+
+  <path class="edge" d="M758 520 C620 574 410 495 294 430"/>
+  <rect x="499" y="522" width="96" height="23" rx="11" fill="#fff"/>
+  <text class="edge-label" x="547" y="538" text-anchor="middle">Reply / Push</text>
+
+  <path class="edge" d="M430 774 C390 720 394 540 438 494"/>
+  <text class="edge-label" x="382" y="649" text-anchor="middle">起動</text>
+
+  <path class="edge" d="M668 465 C830 401 965 366 1090 350"/>
+  <text class="edge-label" x="874" y="393" text-anchor="middle">対象抽出・記録</text>
+
+  <path class="edge" d="M294 634H542"/>
+  <text class="edge-label" x="418" y="621" text-anchor="middle">HTTPS</text>
+
+  <path class="edge" d="M294 780 C390 780 467 662 542 624"/>
+  <text class="edge-label" x="412" y="733" text-anchor="middle">OAuth</text>
+
+  <path class="edge" d="M846 618 C950 618 1015 409 1090 382"/>
+  <text class="edge-label" x="984" y="535" text-anchor="middle">集計</text>
+
+  <path class="edge-soft" d="M1090 532 C1040 532 1036 520 988 512"/>
+  <path class="edge-soft" d="M1090 555 C960 690 780 681 727 649"/>
+
+  <rect x="1090" y="746" width="260" height="56" rx="14" fill="#f2edff"/>
+  <circle cx="1115" cy="774" r="6" fill="#6d3ee8"/>
+  <text class="node-copy" x="1132" y="770">本番基盤：Workers + D1</text>
+  <text class="node-copy" x="1132" y="789">無料枠で常時稼働</text>
+</svg>
