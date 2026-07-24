@@ -30,7 +30,9 @@ export interface PaymentRecord {
   paymentMethodSnapshot: string | null;
   dueDate: string;
   status: PaymentStatus;
+  requestNotifiedAt: Date | null;
   notifiedAt: Date | null;
+  overdueNotifiedAt: Date | null;
   paidAt: Date | null;
   completedByMemberId: string | null;
 }

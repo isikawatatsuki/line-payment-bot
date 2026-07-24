@@ -38,6 +38,16 @@ export function todayInTimeZone(date: Date, timeZone = "Asia/Tokyo"): string {
   }).format(date);
 }
 
+export function addDays(date: string, days: number): string {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}
+
 export function formatMonth(month: string): string {
   const [year, value] = month.split("-").map(Number);
   return `${year}年${value}月`;

@@ -23,7 +23,8 @@ function toRecord(row: Row): PaymentRecord {
   return {
     id: String(row.id), paymentItemId: String(row.payment_item_id), groupId: String(row.group_id), payerMemberId: String(row.payer_member_id),
     targetMonth: String(row.target_month), itemNameSnapshot: String(row.item_name_snapshot), amountSnapshot: Number(row.amount_snapshot), paymentMethodSnapshot: row.payment_method_snapshot ? String(row.payment_method_snapshot) : null,
-    dueDate: String(row.due_date), status: row.status as PaymentRecord["status"], notifiedAt: row.notified_at ? new Date(String(row.notified_at)) : null,
+    dueDate: String(row.due_date), status: row.status as PaymentRecord["status"], requestNotifiedAt: row.request_notified_at ? new Date(String(row.request_notified_at)) : null,
+    notifiedAt: row.notified_at ? new Date(String(row.notified_at)) : null, overdueNotifiedAt: row.overdue_notified_at ? new Date(String(row.overdue_notified_at)) : null,
     paidAt: row.paid_at ? new Date(String(row.paid_at)) : null, completedByMemberId: row.completed_by_member_id ? String(row.completed_by_member_id) : null
   };
 }
@@ -148,6 +149,11 @@ export class D1Store implements Store {
     return rows.results.map(toRecord);
   }
 
+  async listPendingRecordsDueBefore(date: string) {
+    const rows = await this.db.prepare("SELECT * FROM payment_records WHERE status = 'pending' AND due_date < ? ORDER BY due_date, id").bind(date).all<Row>();
+    return rows.results.map(toRecord);
+  }
+
   async markPaid(recordIds: string[], completedByMemberId: string, now: Date) {
     if (!recordIds.length) return 0;
     const placeholders = recordIds.map(() => "?").join(",");
@@ -156,10 +162,11 @@ export class D1Store implements Store {
     return result.meta.changes ?? 0;
   }
 
-  async markNotified(recordIds: string[], now: Date) {
+  async markNotification(recordIds: string[], kind: "request" | "due" | "overdue", now: Date) {
     if (!recordIds.length) return 0;
     const placeholders = recordIds.map(() => "?").join(",");
-    const result = await this.db.prepare(`UPDATE payment_records SET notified_at = ?, updated_at = ? WHERE id IN (${placeholders}) AND notified_at IS NULL`)
+    const column = kind === "request" ? "request_notified_at" : kind === "due" ? "notified_at" : "overdue_notified_at";
+    const result = await this.db.prepare(`UPDATE payment_records SET ${column} = ?, updated_at = ? WHERE id IN (${placeholders})`)
       .bind(now.toISOString(), now.toISOString(), ...recordIds).run();
     return result.meta.changes ?? 0;
   }

@@ -35,4 +35,13 @@ describe("PaymentBot conversation", () => {
     const state = [...store.states.values()][0]!; state.expiresAt = new Date(now.getTime() - 1);
     expect((await bot.handleText(event({ eventId: "later", now: new Date(now.getTime() + 1) })))[0]).toContain("有効期限");
   });
+  it("announces payment completion in the group", async () => {
+    const group = await store.ensureGroup("G1");
+    const payer = await store.ensureMember(group, "U1", "石川");
+    await store.createItem({ groupId: group, name: "家賃", startMonth: "2026-07-01", endMonth: null, paymentType: "monthly", paymentDay: 27, specificPaymentDate: null, payerMemberId: payer.id, amount: 120000, paymentMethod: "銀行振込", note: null, createdByMemberId: payer.id });
+    await store.createDueRecords("2026-07-27");
+    expect((await bot.handleText(event({ eventId: "complete-start", botMentioned: true, text: "支払い完了" })))[0]).toContain("以下の支払いを完了にします");
+    expect((await bot.handleText(event({ eventId: "complete-confirm", text: "完了" })))[0]).toContain("✅ 支払い完了");
+    expect(store.records[0]?.status).toBe("paid");
+  });
 });

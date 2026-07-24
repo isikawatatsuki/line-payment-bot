@@ -20,11 +20,24 @@ export function recordSummary(records: PaymentRecord[], memberName: string, targ
   return `📋 ${formatMonth(targetMonth)} 支払い状況\n\n@${memberName}\n合計：${formatAmount(total)}\n状態：${status}\n期限：${due.replaceAll("-", "年").replace(/年(\d{2})年/, "年$1月")}日\n\n【内訳】\n${lines.join("\n")}`;
 }
 
-export function notification(records: PaymentRecord[], memberName: string): string {
-  const month = records[0]?.targetMonth ?? "";
+function notificationDetails(records: PaymentRecord[]): string {
   const total = records.reduce((sum, record) => sum + record.amountSnapshot, 0);
   const lines = records.map((record) => `${record.itemNameSnapshot}　${formatAmount(record.amountSnapshot)}${record.paymentMethodSnapshot ? `\n　希望支払い方法: ${record.paymentMethodSnapshot}` : ""}`);
-  return `@${memberName}\n\n📊 ${formatMonth(month)} 支払い集計\n\n合計：${formatAmount(total)}\n\n【内訳】\n${lines.join("\n")}\n\n支払期限：${records[0]?.dueDate}\n\n支払いが完了したら、\n@支払いBOT をメンションして\n「支払い完了」と送信してください。`;
+  return `合計：${formatAmount(total)}\n\n【内訳】\n${lines.join("\n")}\n\n支払期限：${records[0]?.dueDate}`;
+}
+
+export function paymentRequestNotification(records: PaymentRecord[], memberName: string): string {
+  const month = records[0]?.targetMonth ?? "";
+  return `@${memberName}\n\n📨 ${formatMonth(month)} 支払い依頼\n\n${notificationDetails(records)}\n\n期限の3日前です。支払いをお願いします。`;
+}
+
+export function dueDateNotification(records: PaymentRecord[], memberName: string): string {
+  const month = records[0]?.targetMonth ?? "";
+  return `@${memberName}\n\n⏰ ${formatMonth(month)} 本日が支払期限です\n\n${notificationDetails(records)}\n\n支払いが完了したら、\n@支払いBOT をメンションして\n「支払い完了」と送信してください。`;
+}
+
+export function overdueNotification(records: PaymentRecord[], memberName: string, daysLate: number): string {
+  return `@${memberName}\n\n⚠️ 支払い期限を${daysLate}日超過しています\n\n${notificationDetails(records)}\n\n支払い状況を確認してください。`;
 }
 
 export function completionConfirmation(records: PaymentRecord[]): string {
@@ -35,7 +48,7 @@ export function completionConfirmation(records: PaymentRecord[]): string {
 
 export function completionDone(records: PaymentRecord[], now: Date): string {
   const total = records.reduce((sum, record) => sum + record.amountSnapshot, 0);
-  return `${formatMonth(records[0]!.targetMonth)}分の支払いを完了にしました。\n\n合計：${formatAmount(total)}\n完了日時：${formatJst(now)}`;
+  return `✅ 支払い完了\n\n${formatMonth(records[0]!.targetMonth)}分の支払いを完了にしました。\n\n合計：${formatAmount(total)}\n完了日時：${formatJst(now)}`;
 }
 
 export function itemList(items: PaymentItem[], verb: "修正" | "削除"): string {

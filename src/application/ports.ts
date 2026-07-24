@@ -20,9 +20,10 @@ export interface Store {
   saveConversation(state: ConversationState): Promise<void>;
   clearConversation(groupId: string, memberId: string): Promise<void>;
   createDueRecords(date: string): Promise<PaymentRecord[]>;
+  listPendingRecordsDueBefore(date: string): Promise<PaymentRecord[]>;
   listRecords(groupId: string, targetMonth: string, payerMemberId?: string): Promise<PaymentRecord[]>;
   markPaid(recordIds: string[], completedByMemberId: string, now: Date): Promise<number>;
-  markNotified(recordIds: string[], now: Date): Promise<number>;
+  markNotification(recordIds: string[], kind: "request" | "due" | "overdue", now: Date): Promise<number>;
 }
 
 export interface LineClient {

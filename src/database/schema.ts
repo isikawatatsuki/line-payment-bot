@@ -19,7 +19,8 @@ export interface PaymentItemsTable {
 export interface PaymentRecordsTable {
   id: Generated<string>; payment_item_id: string; group_id: string; payer_member_id: string;
   target_month: string; item_name_snapshot: string; amount_snapshot: number; payment_method_snapshot: string | null; due_date: string;
-  status: "pending" | "paid" | "cancelled"; notified_at: Timestamp | null; paid_at: Timestamp | null;
+  status: "pending" | "paid" | "cancelled"; request_notified_at: Timestamp | null; notified_at: Timestamp | null;
+  overdue_notified_at: Timestamp | null; paid_at: Timestamp | null;
   completed_by_member_id: string | null; created_at: Timestamp; updated_at: Timestamp;
 }
 export interface ConversationStatesTable {
