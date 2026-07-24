@@ -1,3 +1,4 @@
+[![License](https://img.shields.io/github/license/isikawatatsuki/line-payment-bot)](https://github.com/isikawatatsuki/line-payment-bot/blob/main/LICENSE)
 # LINE 支払いBOT
 
 LINEグループ内の月次・単発支払いを登録し、支払日に支払い者別の合計と内訳を通知するBOTです。支払い実績は項目マスタから分離し、作成時点の名称・金額をスナップショットとして保存します。
