@@ -21,12 +21,13 @@ describe("PaymentBot conversation", () => {
   });
   it("registers only after confirmation and suppresses duplicate webhook events", async () => {
     await bot.handleText(event({ eventId: "start", botMentioned: true, text: "追加" }));
-    const form = "項目名: 家賃\n開始月: 2026年7月\n終了月: 未定\n支払日: 毎月27日\n支払い者: @石川\n金額: 120000円\n備考: 共有";
+    const form = "項目名: 家賃\n開始月: 2026年7月\n終了月: 未定\n支払日: 毎月27日\n支払い者: @石川\n金額: 120000円\n希望支払い方法: PayPay\n備考: 共有";
     const confirmation = await bot.handleText(event({ eventId: "form", text: form, mentions: [{ lineUserId: "U1", displayName: "石川" }] }));
     expect(confirmation[0]).toContain("以下の内容で登録します");
     expect(store.items).toHaveLength(0);
     expect((await bot.handleText(event({ eventId: "register", text: "登録" })))[0]).toContain("登録しました");
     expect(store.items).toHaveLength(1);
+    expect(store.items[0]?.paymentMethod).toBe("PayPay");
     expect(await bot.handleText(event({ eventId: "register", text: "登録" }))).toEqual([]);
   });
   it("expires a stale conversation", async () => {

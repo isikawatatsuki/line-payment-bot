@@ -13,12 +13,12 @@ export interface LineMembersTable {
 export interface PaymentItemsTable {
   id: Generated<string>; group_id: string; name: string; start_month: string; end_month: string | null;
   payment_type: "monthly" | "one_time"; payment_day: number | null; specific_payment_date: string | null;
-  payer_member_id: string; amount: number; note: string | null; is_active: boolean;
+  payer_member_id: string; amount: number; payment_method: string | null; note: string | null; is_active: boolean;
   created_by_member_id: string; created_at: Timestamp; updated_at: Timestamp;
 }
 export interface PaymentRecordsTable {
   id: Generated<string>; payment_item_id: string; group_id: string; payer_member_id: string;
-  target_month: string; item_name_snapshot: string; amount_snapshot: number; due_date: string;
+  target_month: string; item_name_snapshot: string; amount_snapshot: number; payment_method_snapshot: string | null; due_date: string;
   status: "pending" | "paid" | "cancelled"; notified_at: Timestamp | null; paid_at: Timestamp | null;
   completed_by_member_id: string | null; created_at: Timestamp; updated_at: Timestamp;
 }

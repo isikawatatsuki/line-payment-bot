@@ -99,10 +99,10 @@ export class PaymentBot {
       await this.store.createItem({
         groupId: state.groupId, name: data.name, startMonth: data.startMonth, endMonth: data.endMonth,
         paymentType: data.paymentType, paymentDay: data.paymentDay, specificPaymentDate: data.specificPaymentDate,
-        payerMemberId: payer.id, amount: data.amount, note: data.note, createdByMemberId: state.memberId
+        payerMemberId: payer.id, amount: data.amount, paymentMethod: data.paymentMethod, note: data.note, createdByMemberId: state.memberId
       });
       await this.store.clearConversation(state.groupId, state.memberId);
-      return [`支払い項目を登録しました。\n\n${data.name}\n${data.paymentType === "monthly" ? `毎月${data.paymentDay}日` : data.specificPaymentDate}\n${data.amount.toLocaleString("ja-JP")}円\n支払い者: @${data.payerDisplayName}`];
+      return [`支払い項目を登録しました。\n\n${data.name}\n${data.paymentType === "monthly" ? `毎月${data.paymentDay}日` : data.specificPaymentDate}\n${data.amount.toLocaleString("ja-JP")}円\n支払い者: @${data.payerDisplayName}${data.paymentMethod ? `\n希望支払い方法: ${data.paymentMethod}` : ""}`];
     }
     const actor = await this.store.findMemberById(state.memberId);
     const self = actor ? { lineUserId: actor.lineUserId, displayName: actor.displayName } : undefined;
