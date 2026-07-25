@@ -14,6 +14,8 @@
     "cf:migrate:local": "wrangler d1 migrations apply line-payment-bot --local",
     "cf:migrate:remote": "wrangler d1 migrations apply line-payment-bot --remote",
     "cf:deploy": "wrangler deploy",
+    "cf:announce": "tsx src/scripts/announce.ts",
+    "cf:sync-group-names": "tsx src/scripts/sync-group-names.ts",
     "check": "npm run build && npm test"
   },
   "engines": {

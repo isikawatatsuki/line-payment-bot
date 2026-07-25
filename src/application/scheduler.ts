@@ -6,7 +6,7 @@ import { addDays, daysBetween, todayInTimeZone } from "../domain/date.js";
 type NotificationKind = "request" | "due" | "overdue";
 
 export class PaymentScheduler {
-  constructor(private store: Store, private line: LineClient, private logger: Logger) {}
+  constructor(private store: Store, private line: LineClient, private logger: Logger, private dashboardBaseUrl?: string) {}
 
   async run(now = new Date()): Promise<{ notifications: number }> {
     const today = todayInTimeZone(now);
@@ -40,11 +40,12 @@ export class PaymentScheduler {
       const member = await this.store.findMemberById(values[0]!.payerMemberId);
       const lineGroupId = await this.store.findLineGroupId(values[0]!.groupId);
       if (!member || !lineGroupId) continue;
+      const dashboardUrl = this.dashboardBaseUrl ? `${this.dashboardBaseUrl}/dashboard/login` : undefined;
       const message = kind === "request"
-        ? paymentRequestNotification(values, member.displayName)
+        ? paymentRequestNotification(values, member.displayName, dashboardUrl)
         : kind === "due"
-          ? dueDateNotification(values, member.displayName)
-          : overdueNotification(values, member.displayName, daysBetween(values[0]!.dueDate, today));
+          ? dueDateNotification(values, member.displayName, dashboardUrl)
+          : overdueNotification(values, member.displayName, daysBetween(values[0]!.dueDate, today), dashboardUrl);
       try {
         await this.line.push(lineGroupId, [message]);
         await this.store.markNotification(values.map((record) => record.id), kind, now);

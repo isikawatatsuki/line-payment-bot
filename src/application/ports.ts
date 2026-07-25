@@ -1,12 +1,20 @@
-import type { ConversationState, Member, PaymentItem, PaymentRecord } from "../domain/types.js";
+import type { Member, PaymentItem, PaymentRecord } from "../domain/types.js";
 
 export interface NewPaymentItem extends Omit<PaymentItem, "id" | "isActive"> {}
+
+export interface GroupPendingAnnouncement {
+  groupId: string;
+  lineGroupId: string;
+}
 
 export interface Store {
   claimEvent(eventId: string, now: Date): Promise<boolean>;
   ensureGroup(lineGroupId: string, displayName?: string): Promise<string>;
   findLineGroupId(groupId: string): Promise<string | null>;
   deactivateGroup(lineGroupId: string): Promise<void>;
+  listGroupsNeedingAnnouncement(announcementKey: string): Promise<GroupPendingAnnouncement[]>;
+  markAnnounced(groupId: string, announcementKey: string, now: Date): Promise<void>;
+  listActiveGroups(): Promise<GroupPendingAnnouncement[]>;
   ensureMember(groupId: string, lineUserId: string, displayName: string): Promise<Member>;
   findMember(groupId: string, lineUserId: string): Promise<Member | null>;
   findMemberById(memberId: string): Promise<Member | null>;
@@ -16,9 +24,7 @@ export interface Store {
   createItem(item: NewPaymentItem): Promise<PaymentItem>;
   updateItem(itemId: string, patch: Partial<NewPaymentItem>): Promise<void>;
   deactivateItem(itemId: string): Promise<void>;
-  getConversation(groupId: string, memberId: string): Promise<ConversationState | null>;
-  saveConversation(state: ConversationState): Promise<void>;
-  clearConversation(groupId: string, memberId: string): Promise<void>;
+  sumPaidAmount(paymentItemId: string): Promise<number>;
   createDueRecords(date: string): Promise<PaymentRecord[]>;
   listPendingRecordsDueBefore(date: string): Promise<PaymentRecord[]>;
   listRecords(groupId: string, targetMonth: string, payerMemberId?: string): Promise<PaymentRecord[]>;
@@ -27,9 +33,9 @@ export interface Store {
 }
 
 export interface LineClient {
-  reply(replyToken: string, messages: string[]): Promise<void>;
   push(groupLineId: string, messages: string[]): Promise<void>;
   getGroupMemberName(groupLineId: string, lineUserId: string): Promise<string | null>;
+  getGroupName(groupLineId: string): Promise<string | null>;
 }
 
 export interface Logger {

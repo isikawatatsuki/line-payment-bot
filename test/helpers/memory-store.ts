@@ -1,20 +1,28 @@
 import type { NewPaymentItem, Store } from "../../src/application/ports.js";
-import type { ConversationState, Member, PaymentItem, PaymentRecord } from "../../src/domain/types.js";
+import type { Member, PaymentItem, PaymentRecord } from "../../src/domain/types.js";
 import { monthlyDueDate } from "../../src/domain/date.js";
 
 export class MemoryStore implements Store {
   events = new Set<string>();
   groups = new Map<string, string>();
+  inactiveGroupIds = new Set<string>();
+  announcedKeys = new Set<string>();
   members: Member[] = [];
   items: PaymentItem[] = [];
   records: PaymentRecord[] = [];
-  states = new Map<string, ConversationState>();
   private sequence = 0;
   private id() { return String(++this.sequence); }
   async claimEvent(id: string) { if (this.events.has(id)) return false; this.events.add(id); return true; }
   async ensureGroup(lineId: string) { if (!this.groups.has(lineId)) this.groups.set(lineId, this.id()); return this.groups.get(lineId)!; }
   async findLineGroupId(groupId: string) { return [...this.groups].find(([, id]) => id === groupId)?.[0] ?? null; }
-  async deactivateGroup() {}
+  async deactivateGroup(lineGroupId: string) { const id = this.groups.get(lineGroupId); if (id) this.inactiveGroupIds.add(id); }
+  async listGroupsNeedingAnnouncement(announcementKey: string) {
+    return [...this.groups]
+      .filter(([, groupId]) => !this.inactiveGroupIds.has(groupId) && !this.announcedKeys.has(`${groupId}:${announcementKey}`))
+      .map(([lineGroupId, groupId]) => ({ groupId, lineGroupId }));
+  }
+  async markAnnounced(groupId: string, announcementKey: string) { this.announcedKeys.add(`${groupId}:${announcementKey}`); }
+  async listActiveGroups() { return [...this.groups].filter(([, groupId]) => !this.inactiveGroupIds.has(groupId)).map(([lineGroupId, groupId]) => ({ groupId, lineGroupId })); }
   async ensureMember(groupId: string, lineUserId: string, displayName: string) {
     let value = this.members.find((m) => m.groupId === groupId && m.lineUserId === lineUserId);
     if (!value) { value = { id: this.id(), groupId, lineUserId, displayName, isActive: true }; this.members.push(value); }
@@ -28,9 +36,7 @@ export class MemoryStore implements Store {
   async createItem(value: NewPaymentItem) { const created = { ...value, id: this.id(), isActive: true }; this.items.push(created); return created; }
   async updateItem(id: string, patch: Partial<NewPaymentItem>) { Object.assign(this.items.find((i) => i.id === id)!, patch); }
   async deactivateItem(id: string) { this.items.find((i) => i.id === id)!.isActive = false; }
-  async getConversation(g: string, m: string) { return this.states.get(`${g}:${m}`) ?? null; }
-  async saveConversation(s: ConversationState) { this.states.set(`${s.groupId}:${s.memberId}`, s); }
-  async clearConversation(g: string, m: string) { this.states.delete(`${g}:${m}`); }
+  async sumPaidAmount(paymentItemId: string) { return this.records.filter((r) => r.paymentItemId === paymentItemId && r.status === "paid").reduce((sum, r) => sum + r.amountSnapshot, 0); }
   async createDueRecords(date: string) {
     const target = `${date.slice(0, 7)}-01`;
     for (const value of this.items.filter((i) => i.isActive)) {

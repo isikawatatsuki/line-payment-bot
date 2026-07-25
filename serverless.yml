@@ -7,7 +7,6 @@ provider:
   environment:
     LINE_CHANNEL_ACCESS_TOKEN: ${env:LINE_CHANNEL_ACCESS_TOKEN}
     LINE_CHANNEL_SECRET: ${env:LINE_CHANNEL_SECRET}
-    LINE_BOT_USER_ID: ${env:LINE_BOT_USER_ID}
     DATABASE_URL: ${env:DATABASE_URL}
     APP_TIMEZONE: Asia/Tokyo
 functions:
@@ -24,6 +23,12 @@ functions:
       - schedule:
           rate: cron(5 15 * * ? *)
           enabled: true
+  announceRelease:
+    handler: dist/src/lambda.announceRelease
+    timeout: 30
+  syncGroupNames:
+    handler: dist/src/lambda.syncGroupNames
+    timeout: 30
 package:
   patterns:
     - dist/**
