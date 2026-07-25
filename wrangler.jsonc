@@ -6,15 +6,16 @@
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "APP_TIMEZONE": "Asia/Tokyo",
-    "CONVERSATION_TTL_MINUTES": "30"
+    "WORKER_URL": "https://line-payment-bot.tatumagichannel.workers.dev"
   },
   "secrets": {
     "required": [
       "LINE_CHANNEL_ACCESS_TOKEN",
       "LINE_CHANNEL_SECRET",
-      "LINE_BOT_USER_ID",
-      "DASHBOARD_PASSWORD",
-      "DASHBOARD_SESSION_SECRET"
+      "DASHBOARD_SESSION_SECRET",
+      "LINE_LOGIN_CHANNEL_ID",
+      "LINE_LOGIN_CHANNEL_SECRET",
+      "INTERNAL_ADMIN_TOKEN"
     ]
   },
   "d1_databases": [

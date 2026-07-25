@@ -1,6 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { NewPaymentItem, Store } from "../application/ports.js";
-import type { ConversationState, Member, PaymentItem, PaymentRecord } from "../domain/types.js";
+import type { Member, PaymentItem, PaymentRecord } from "../domain/types.js";
 import { monthlyDueDate } from "../domain/date.js";
 
 type Row = Record<string, unknown>;
@@ -14,7 +14,8 @@ function toItem(row: Row): PaymentItem {
     id: String(row.id), groupId: String(row.group_id), name: String(row.name), startMonth: String(row.start_month),
     endMonth: row.end_month ? String(row.end_month) : null, paymentType: row.payment_type as PaymentItem["paymentType"],
     paymentDay: row.payment_day === null ? null : Number(row.payment_day), specificPaymentDate: row.specific_payment_date ? String(row.specific_payment_date) : null,
-    payerMemberId: String(row.payer_member_id), amount: Number(row.amount), paymentMethod: row.payment_method ? String(row.payment_method) : null, note: row.note ? String(row.note) : null,
+    payerMemberId: String(row.payer_member_id), amount: Number(row.amount), totalAmount: row.total_amount === null || row.total_amount === undefined ? null : Number(row.total_amount),
+    paymentMethod: row.payment_method ? String(row.payment_method) : null, note: row.note ? String(row.note) : null,
     isActive: Boolean(row.is_active), createdByMemberId: String(row.created_by_member_id)
   };
 }
@@ -54,6 +55,23 @@ export class D1Store implements Store {
     await this.db.prepare("UPDATE line_groups SET is_active = 0, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE line_group_id = ?").bind(lineGroupId).run();
   }
 
+  async listGroupsNeedingAnnouncement(announcementKey: string) {
+    const rows = await this.db.prepare(`SELECT lg.id, lg.line_group_id FROM line_groups lg
+      LEFT JOIN group_announcements ga ON ga.group_id = lg.id AND ga.announcement_key = ?
+      WHERE lg.is_active = 1 AND ga.group_id IS NULL`).bind(announcementKey).all<Row>();
+    return rows.results.map((row) => ({ groupId: String(row.id), lineGroupId: String(row.line_group_id) }));
+  }
+
+  async markAnnounced(groupId: string, announcementKey: string, now: Date) {
+    await this.db.prepare(`INSERT INTO group_announcements (group_id, announcement_key, announced_at) VALUES (?, ?, ?)
+      ON CONFLICT(group_id, announcement_key) DO UPDATE SET announced_at = excluded.announced_at`).bind(groupId, announcementKey, now.toISOString()).run();
+  }
+
+  async listActiveGroups() {
+    const rows = await this.db.prepare("SELECT id, line_group_id FROM line_groups WHERE is_active = 1").all<Row>();
+    return rows.results.map((row) => ({ groupId: String(row.id), lineGroupId: String(row.line_group_id) }));
+  }
+
   async ensureMember(groupId: string, lineUserId: string, displayName: string) {
     const now = new Date().toISOString();
     await this.db.prepare(`INSERT INTO line_members (group_id, line_user_id, display_name, is_active, joined_at) VALUES (?, ?, ?, 1, ?)
@@ -89,15 +107,15 @@ export class D1Store implements Store {
 
   async createItem(value: NewPaymentItem) {
     const result = await this.db.prepare(`INSERT INTO payment_items
-      (group_id, name, start_month, end_month, payment_type, payment_day, specific_payment_date, payer_member_id, amount, payment_method, note, is_active, created_by_member_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`).bind(value.groupId, value.name, value.startMonth, value.endMonth, value.paymentType, value.paymentDay, value.specificPaymentDate, value.payerMemberId, value.amount, value.paymentMethod, value.note, value.createdByMemberId).run();
+      (group_id, name, start_month, end_month, payment_type, payment_day, specific_payment_date, payer_member_id, amount, total_amount, payment_method, note, is_active, created_by_member_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`).bind(value.groupId, value.name, value.startMonth, value.endMonth, value.paymentType, value.paymentDay, value.specificPaymentDate, value.payerMemberId, value.amount, value.totalAmount, value.paymentMethod, value.note, value.createdByMemberId).run();
     const created = await this.findItem(String(result.meta.last_row_id));
     if (!created) throw new Error("Failed to create payment item");
     return created;
   }
 
   async updateItem(itemId: string, patch: Partial<NewPaymentItem>) {
-    const mapping: Record<string, string> = { groupId: "group_id", startMonth: "start_month", endMonth: "end_month", paymentType: "payment_type", paymentDay: "payment_day", specificPaymentDate: "specific_payment_date", payerMemberId: "payer_member_id", createdByMemberId: "created_by_member_id" };
+    const mapping: Record<string, string> = { groupId: "group_id", startMonth: "start_month", endMonth: "end_month", paymentType: "payment_type", paymentDay: "payment_day", specificPaymentDate: "specific_payment_date", payerMemberId: "payer_member_id", totalAmount: "total_amount", paymentMethod: "payment_method", createdByMemberId: "created_by_member_id" };
     const entries = Object.entries(patch).filter(([key]) => key !== "id");
     if (!entries.length) return;
     const assignments = entries.map(([key]) => `${mapping[key] ?? key} = ?`).join(", ");
@@ -108,19 +126,9 @@ export class D1Store implements Store {
     await this.db.prepare("UPDATE payment_items SET is_active = 0, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").bind(itemId).run();
   }
 
-  async getConversation(groupId: string, memberId: string) {
-    const row = await this.db.prepare("SELECT * FROM conversation_states WHERE group_id = ? AND member_id = ?").bind(groupId, memberId).first<Row>();
-    return row ? { groupId, memberId, currentAction: row.current_action as ConversationState["currentAction"], currentStep: String(row.current_step), temporaryData: JSON.parse(String(row.temporary_data)), expiresAt: new Date(String(row.expires_at)) } : null;
-  }
-
-  async saveConversation(state: ConversationState) {
-    await this.db.prepare(`INSERT INTO conversation_states (group_id, member_id, current_action, current_step, temporary_data, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(group_id, member_id) DO UPDATE SET current_action = excluded.current_action, current_step = excluded.current_step,
-      temporary_data = excluded.temporary_data, expires_at = excluded.expires_at, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`).bind(state.groupId, state.memberId, state.currentAction, state.currentStep, JSON.stringify(state.temporaryData), state.expiresAt.toISOString()).run();
-  }
-
-  async clearConversation(groupId: string, memberId: string) {
-    await this.db.prepare("DELETE FROM conversation_states WHERE group_id = ? AND member_id = ?").bind(groupId, memberId).run();
+  async sumPaidAmount(paymentItemId: string) {
+    const row = await this.db.prepare("SELECT COALESCE(SUM(amount_snapshot), 0) AS total FROM payment_records WHERE payment_item_id = ? AND status = 'paid'").bind(paymentItemId).first<Row>();
+    return Number(row?.total ?? 0);
   }
 
   async createDueRecords(date: string) {
